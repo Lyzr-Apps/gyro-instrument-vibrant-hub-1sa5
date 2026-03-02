@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { FaVideo, FaVideoSlash, FaMusic, FaGuitar, FaDrum, FaVolumeUp, FaVolumeMute, FaHandPaper, FaCrosshairs, FaCircle, FaStop, FaHandRock, FaHandPointUp, FaCompressArrowsAlt, FaExpandArrowsAlt } from 'react-icons/fa'
@@ -855,6 +854,15 @@ export default function CameraSection({
     prevTimeRef.current = 0
   }, [stopSound, setCameraActive])
 
+  // Auto-start camera on mount
+  const autoStartedRef = useRef(false)
+  useEffect(() => {
+    if (!autoStartedRef.current && !cameraActive) {
+      autoStartedRef.current = true
+      startCamera()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
@@ -872,16 +880,9 @@ export default function CameraSection({
   const hasTracking = gestureState.palmPos !== null
 
   return (
-    <div className="flex flex-col items-center gap-4 px-4 pb-24 pt-4" style={{ background: '#000000' }}>
-      {/* Gesture Guide Strip */}
-      <div className="w-full max-w-2xl rounded-lg px-4 py-2 text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(0,255,255,0.15)' }}>
-        <span className="text-[11px] font-mono font-bold tracking-wide" style={{ color: '#00FFFF' }}>
-          {GESTURE_GUIDES[currentInstrument]}
-        </span>
-      </div>
-
-      {/* Instrument Selector */}
-      <div className="flex gap-2 w-full max-w-2xl">
+    <div className="flex flex-col items-center gap-3 px-2 pb-24 pt-2" style={{ background: '#000000' }}>
+      {/* Compact Instrument Selector + Gesture Guide */}
+      <div className="flex gap-1.5 w-full max-w-3xl">
         {(['synth', 'piano', 'strings', 'drums'] as InstrumentType[]).map((inst) => {
           const isSelected = currentInstrument === inst
           return (
@@ -891,93 +892,73 @@ export default function CameraSection({
                 setCurrentInstrument(inst)
                 if (isPlaying) stopSound()
               }}
-              className="flex-1 flex flex-col items-center gap-1 py-3 px-2 rounded-xl transition-all duration-200"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg transition-all duration-200"
               style={{
                 background: isSelected ? `${INSTRUMENT_COLORS[inst]}18` : 'rgba(255,255,255,0.03)',
                 border: `1px solid ${isSelected ? INSTRUMENT_COLORS[inst] : 'rgba(255,255,255,0.08)'}`,
                 color: isSelected ? INSTRUMENT_COLORS[inst] : '#6b7280',
-                boxShadow: isSelected ? `0 0 15px ${INSTRUMENT_COLORS[inst]}40, inset 0 0 15px ${INSTRUMENT_COLORS[inst]}10` : 'none',
+                boxShadow: isSelected ? `0 0 12px ${INSTRUMENT_COLORS[inst]}40` : 'none',
               }}
             >
-              <span className="text-lg">{INSTRUMENT_ICONS[inst]}</span>
-              <span className="text-xs font-semibold tracking-wide">{INSTRUMENT_LABELS[inst]}</span>
+              <span className="text-sm">{INSTRUMENT_ICONS[inst]}</span>
+              <span className="text-[11px] font-semibold tracking-wide">{INSTRUMENT_LABELS[inst]}</span>
             </button>
           )
         })}
       </div>
 
-      {/* Main Layout: Volume Bar + Camera */}
-      <div className="flex gap-4 w-full max-w-2xl items-stretch">
-        {/* Volume Indicator */}
-        <div className="flex flex-col items-center gap-3 w-20 shrink-0">
-          <FaVolumeUp className="text-lg" style={{ color: hasTracking && currentGain > 0.05 ? '#ef4444' : '#4b5563' }} />
+      {/* Gesture Guide Strip */}
+      <div className="w-full max-w-3xl rounded-lg px-3 py-1.5 text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(0,255,255,0.1)' }}>
+        <span className="text-[10px] font-mono font-bold tracking-wide" style={{ color: '#00FFFF' }}>
+          {GESTURE_GUIDES[currentInstrument]}
+        </span>
+      </div>
 
-          <div className="relative flex-1 w-6 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', minHeight: 200 }}>
-            <div
-              className="absolute bottom-0 left-0 right-0 rounded-full transition-all duration-150"
-              style={{
-                height: hasTracking ? `${volumePercent}%` : '0%',
-                background: 'linear-gradient(to top, #ef4444, #f97316, #eab308)',
-              }}
-            />
-            {[25, 50, 75].map(tick => (
-              <div key={tick} className="absolute left-0 right-0 h-px" style={{ bottom: `${tick}%`, background: 'rgba(255,255,255,0.15)' }} />
-            ))}
-          </div>
+      {/* CAMERA FEED - Full Width & Prominent */}
+      <div className="relative w-full max-w-3xl overflow-hidden rounded-xl" style={{ border: `2px solid ${cameraActive ? (hasTracking ? 'rgba(0,255,0,0.4)' : 'rgba(0,255,255,0.3)') : 'rgba(255,255,255,0.1)'}`, background: '#0a0a0a', boxShadow: cameraActive ? '0 0 30px rgba(0,255,0,0.1)' : 'none' }}>
+        <div className="relative" style={{ aspectRatio: '4/3' }}>
+          <video
+            ref={videoRef}
+            playsInline
+            muted
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ display: cameraActive ? 'block' : 'none', transform: 'scaleX(-1)' }}
+          />
+          <canvas ref={canvasRef} className="hidden" width={640} height={480} />
+          <canvas
+            ref={overlayRef}
+            className="absolute inset-0 w-full h-full"
+            width={640}
+            height={480}
+            style={{ display: cameraActive ? 'block' : 'none', transform: 'scaleX(-1)' }}
+          />
 
-          <FaVolumeMute className="text-lg" style={{ color: !hasTracking || currentGain < 0.05 ? '#ef4444' : '#4b5563' }} />
-
-          <div className="text-center">
-            <div className="text-lg font-bold font-mono text-white">{hasTracking ? `${volumePercent}%` : '--'}</div>
-            <div className="text-[10px] font-semibold tracking-widest" style={{ color: '#ff1493' }}>VOL</div>
-          </div>
-
-          <div className="text-center mt-1">
-            <div className="text-2xl font-black font-mono" style={{ color: hasTracking ? accentColor : '#4b5563' }}>
-              {hasTracking && currentInstrument !== 'drums' ? currentNote : (currentInstrument === 'drums' && lastDrumHit ? lastDrumHit.toUpperCase() : '--')}
-            </div>
-            <div className="text-[10px] font-mono" style={{ color: '#00FFFF' }}>
-              {hasTracking && currentInstrument !== 'drums' ? `${Math.round(currentFreq)} Hz` : '-- Hz'}
-            </div>
-          </div>
-        </div>
-
-        {/* Camera Feed */}
-        <div className="relative flex-1 overflow-hidden rounded-xl" style={{ border: '1px solid rgba(0,255,0,0.2)', background: '#0a0a0a' }}>
-          <div className="relative" style={{ aspectRatio: '4/3' }}>
-            <video
-              ref={videoRef}
-              playsInline
-              muted
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{ display: cameraActive ? 'block' : 'none', transform: 'scaleX(-1)' }}
-            />
-            <canvas ref={canvasRef} className="hidden" width={640} height={480} />
-            <canvas
-              ref={overlayRef}
-              className="absolute inset-0 w-full h-full"
-              width={640}
-              height={480}
-              style={{ display: cameraActive ? 'block' : 'none', transform: 'scaleX(-1)' }}
-            />
-
-            {/* Camera Off State */}
-            {!cameraActive && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3" style={{ background: '#0a0a0a' }}>
-                <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: 'rgba(0,255,0,0.05)', border: '1px solid rgba(0,255,0,0.15)' }}>
-                  <FaVideo className="text-2xl" style={{ color: '#00ff00' }} />
-                </div>
-                <p className="text-sm text-center max-w-[220px]" style={{ color: '#00FFFF' }}>
-                  Enable camera to track hand gestures and control music
-                </p>
-                <div className="flex items-center gap-1 text-[10px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                  <FaCrosshairs className="text-[8px]" />
-                  <span>Multi-region gesture detection</span>
-                </div>
+          {/* Camera Off / Loading State */}
+          {!cameraActive && (
+            <button
+              onClick={startCamera}
+              className="absolute inset-0 flex flex-col items-center justify-center gap-4 cursor-pointer transition-all duration-300 hover:bg-white/[0.02]"
+              style={{ background: '#0a0a0a' }}
+            >
+              <div className="w-20 h-20 rounded-full flex items-center justify-center animate-pulse" style={{ background: 'linear-gradient(135deg, rgba(255,20,147,0.15), rgba(0,255,255,0.15))', border: '2px solid rgba(0,255,255,0.3)' }}>
+                <FaVideo className="text-3xl" style={{ color: '#00FFFF' }} />
               </div>
-            )}
+              <div className="text-center">
+                <p className="text-base font-bold" style={{ color: '#00FFFF' }}>
+                  Tap to Start Camera
+                </p>
+                <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                  Play {INSTRUMENT_LABELS[currentInstrument]} with hand gestures
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px]" style={{ color: 'rgba(255,20,147,0.6)' }}>
+                <FaCrosshairs className="text-[8px]" />
+                <span>Camera auto-starting...</span>
+              </div>
+            </button>
+          )}
 
-            {/* Recording button overlay (top-right) */}
+            {/* Top-left: Recording control */}
             {cameraActive && (
               <div className="absolute top-3 left-3 z-10">
                 <button
@@ -997,7 +978,7 @@ export default function CameraSection({
               </div>
             )}
 
-            {/* Recording timer overlay */}
+            {/* Top-center: Recording timer */}
             {cameraActive && isRecording && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
                 <Badge className="text-[10px] border-0 font-mono animate-pulse" style={{ background: 'rgba(255,0,0,0.3)', color: '#ff0000', border: '1px solid rgba(255,0,0,0.5)' }}>
@@ -1007,7 +988,7 @@ export default function CameraSection({
               </div>
             )}
 
-            {/* Tracking status badge */}
+            {/* Top-right: Tracking status */}
             {cameraActive && (
               <div className="absolute top-3 right-3 z-10">
                 <Badge
@@ -1024,7 +1005,28 @@ export default function CameraSection({
               </div>
             )}
 
-            {/* Gesture indicator badge */}
+            {/* Bottom-left: Note & Frequency display overlay */}
+            {cameraActive && (
+              <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2">
+                <div className="px-3 py-1.5 rounded-lg" style={{ background: 'rgba(0,0,0,0.7)', border: `1px solid ${accentColor}50` }}>
+                  <div className="text-xl font-black font-mono" style={{ color: hasTracking ? accentColor : '#4b5563' }}>
+                    {currentInstrument === 'drums'
+                      ? (hasTracking && lastDrumHit ? lastDrumHit.toUpperCase() : '--')
+                      : (hasTracking ? currentNote : '--')}
+                  </div>
+                  <div className="text-[9px] font-mono" style={{ color: '#00FFFF' }}>
+                    {currentInstrument === 'drums' ? 'LAST HIT' : `${hasTracking ? Math.round(currentFreq) : '--'} Hz`}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="px-2 py-1 rounded" style={{ background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,20,147,0.3)' }}>
+                    <div className="text-[9px] font-mono" style={{ color: '#ff1493' }}>VOL {hasTracking ? `${volumePercent}%` : '--'}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Bottom-right: Gesture indicator */}
             {cameraActive && hasTracking && (
               <div className="absolute bottom-3 right-3 z-10">
                 <Badge
@@ -1042,98 +1044,34 @@ export default function CameraSection({
             )}
           </div>
         </div>
-      </div>
 
       {/* Camera Error */}
       {cameraError && (
-        <div className="w-full max-w-2xl text-center px-4 py-3 rounded-xl" style={{ background: 'rgba(255,0,0,0.08)', border: '1px solid rgba(255,0,0,0.2)' }}>
+        <div className="w-full max-w-3xl text-center px-4 py-3 rounded-xl" style={{ background: 'rgba(255,0,0,0.08)', border: '1px solid rgba(255,0,0,0.2)' }}>
           <p className="text-sm" style={{ color: '#ff4444' }}>{cameraError}</p>
+          <button
+            onClick={startCamera}
+            className="mt-2 px-4 py-1.5 rounded-lg text-xs font-bold"
+            style={{ background: 'rgba(0,255,255,0.15)', color: '#00FFFF', border: '1px solid rgba(0,255,255,0.3)' }}
+          >
+            Retry Camera
+          </button>
         </div>
       )}
 
-      {/* Live Performance Panel */}
-      <Card className="w-full max-w-2xl border-0 rounded-xl overflow-hidden" style={{ background: '#0a0a0a', border: '1px solid rgba(0,255,255,0.15)' }}>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-xs font-bold tracking-[0.2em] uppercase" style={{ color: '#00FFFF' }}>
-              Live Performance
-            </div>
-            <Badge className="text-[9px] border-0 font-mono" style={{ background: hasTracking ? 'rgba(0,255,0,0.1)' : 'rgba(255,255,255,0.05)', color: hasTracking ? '#00ff00' : '#4b5563' }}>
-              {hasTracking ? 'ACTIVE' : 'IDLE'}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-6">
-            {/* Current Note / Drum */}
-            <div className="text-center">
-              <div className="text-3xl font-black font-mono" style={{ color: hasTracking ? accentColor : '#4b5563' }}>
-                {currentInstrument === 'drums'
-                  ? (hasTracking && lastDrumHit ? lastDrumHit.toUpperCase() : '--')
-                  : (hasTracking ? currentNote : '--')}
-              </div>
-              <div className="text-[10px] font-mono" style={{ color: '#00FFFF' }}>
-                {currentInstrument === 'drums' ? 'LAST HIT' : `${hasTracking ? Math.round(currentFreq) : '--'} Hz`}
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="h-10 w-px" style={{ background: 'rgba(255,255,255,0.1)' }} />
-
-            {/* Volume */}
-            <div className="text-center">
-              <div className="text-xl font-bold font-mono" style={{ color: '#00FFFF' }}>
-                {hasTracking ? `${volumePercent}%` : '--'}
-              </div>
-              <div className="text-[10px] font-mono" style={{ color: '#ff1493' }}>VOLUME</div>
-            </div>
-
-            {/* Divider */}
-            <div className="h-10 w-px" style={{ background: 'rgba(255,255,255,0.1)' }} />
-
-            {/* Gesture */}
-            <div className="flex items-center gap-2">
-              <span className="text-lg" style={{ color: '#ff1493' }}>
-                {GESTURE_ICON_MAP[gestureState.gesture] || <FaCrosshairs />}
-              </span>
-              <div>
-                <div className="text-sm font-bold font-mono" style={{ color: '#ff1493' }}>
-                  {hasTracking ? gestureState.gesture.toUpperCase().replace('_', ' ') : 'NONE'}
-                </div>
-                <div className="text-[10px] font-mono" style={{ color: 'rgba(255,255,255,0.4)' }}>GESTURE</div>
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="h-10 w-px" style={{ background: 'rgba(255,255,255,0.1)' }} />
-
-            {/* Confidence */}
-            <div className="text-center flex-1">
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                  <div className="h-full rounded-full transition-all duration-200" style={{ width: `${Math.round(gestureState.confidence * 100)}%`, background: gestureState.confidence > 0.5 ? '#00ff00' : '#f97316' }} />
-                </div>
-                <span className="text-xs font-mono font-bold" style={{ color: gestureState.confidence > 0.5 ? '#00ff00' : '#f97316' }}>
-                  {hasTracking ? `${Math.round(gestureState.confidence * 100)}%` : '--'}
-                </span>
-              </div>
-              <div className="text-[10px] font-mono mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>CONFIDENCE</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Controls Row */}
-      <div className="flex gap-3 w-full max-w-2xl">
+      {/* Compact Controls Row */}
+      <div className="flex gap-2 w-full max-w-3xl">
         <Button
           onClick={cameraActive ? stopCamera : startCamera}
-          className="flex-1 py-5 text-base font-bold rounded-xl flex items-center justify-center gap-2 border-0 transition-all duration-300"
+          className="py-3 px-4 text-sm font-bold rounded-lg flex items-center justify-center gap-2 border-0 transition-all duration-300"
           style={{
-            background: cameraActive ? 'rgba(255,0,0,0.7)' : 'linear-gradient(135deg, #ff1493, #00FFFF)',
+            background: cameraActive ? 'rgba(255,0,0,0.6)' : 'linear-gradient(135deg, #ff1493, #00FFFF)',
             color: '#ffffff',
-            boxShadow: cameraActive ? '0 0 20px rgba(255,0,0,0.3)' : '0 0 20px rgba(255,20,147,0.3)',
+            boxShadow: cameraActive ? 'none' : '0 0 15px rgba(255,20,147,0.3)',
           }}
         >
           {cameraActive ? <FaVideoSlash /> : <FaVideo />}
-          {cameraActive ? 'Stop Camera' : 'Start Camera'}
+          {cameraActive ? 'Stop' : 'Start Camera'}
         </Button>
         {cameraActive && (
           <Button
@@ -1142,115 +1080,80 @@ export default function CameraSection({
               if (isPlaying) stopSound()
               else startSound()
             }}
-            className="py-5 px-6 text-base font-bold rounded-xl border-0 transition-all duration-300"
+            className="flex-1 py-3 px-4 text-sm font-bold rounded-lg border-0 transition-all duration-300"
             style={{
               background: isPlaying ? 'rgba(0,255,0,0.15)' : 'rgba(255,0,0,0.15)',
               color: isPlaying ? '#00ff00' : '#ff4444',
               border: `1px solid ${isPlaying ? 'rgba(0,255,0,0.3)' : 'rgba(255,0,0,0.3)'}`,
-              boxShadow: isPlaying ? '0 0 15px rgba(0,255,0,0.15)' : 'none',
             }}
           >
-            {isPlaying ? <><FaVolumeUp className="mr-2" /> Sound ON</> : <><FaVolumeMute className="mr-2" /> Sound OFF</>}
+            {isPlaying ? <><FaVolumeUp className="mr-1.5" /> Sound ON</> : <><FaVolumeMute className="mr-1.5" /> Sound OFF</>}
           </Button>
         )}
         {cameraActive && (
           <Button
             onClick={isRecording ? handleStopRecording : handleStartRecording}
-            className="py-5 px-6 text-base font-bold rounded-xl border-0 transition-all duration-300"
+            className="py-3 px-4 text-sm font-bold rounded-lg border-0 transition-all duration-300"
             style={{
               background: isRecording ? 'rgba(255,0,0,0.3)' : 'rgba(255,0,0,0.08)',
               color: isRecording ? '#ff0000' : '#ff4444',
               border: `1px solid ${isRecording ? 'rgba(255,0,0,0.5)' : 'rgba(255,0,0,0.2)'}`,
             }}
           >
-            {isRecording ? <><FaStop className="mr-2" /> Stop Rec</> : <><FaCircle className="mr-2" style={{ color: '#ff0000' }} /> Record</>}
+            {isRecording ? <><FaStop className="mr-1.5" /> Stop</> : <><FaCircle className="mr-1.5" style={{ color: '#ff0000' }} /> Rec</>}
           </Button>
         )}
       </div>
 
-      {/* Compact Telemetry */}
-      <Card className="w-full max-w-2xl border-0 rounded-xl overflow-hidden" style={{ background: '#0a0a0a', border: '1px solid rgba(255,20,147,0.2)' }}>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-xs font-bold tracking-[0.2em] uppercase" style={{ color: '#ff1493' }}>
-              Telemetry Data
-            </div>
-            <Badge className="text-[9px] border-0 font-mono" style={{ background: 'rgba(0,255,255,0.1)', color: '#00FFFF' }}>
-              LIVE
-            </Badge>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            {/* Hand X */}
-            <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(0,255,255,0.1)' }}>
-              <div className="text-[10px] font-bold tracking-widest" style={{ color: '#ff1493' }}>HAND X</div>
-              <div className="text-lg font-mono font-bold" style={{ color: '#00FFFF' }}>
-                {hasTracking && gestureState.palmPos ? `${Math.round(gestureState.palmPos.x * 100)}%` : '--'}
-              </div>
-              <div className="mt-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                <div className="h-full rounded-full transition-all" style={{ width: hasTracking && gestureState.palmPos ? `${gestureState.palmPos.x * 100}%` : '0%', background: '#00FFFF' }} />
-              </div>
-            </div>
-            {/* Hand Y */}
-            <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(0,255,255,0.1)' }}>
-              <div className="text-[10px] font-bold tracking-widest" style={{ color: '#ff1493' }}>HAND Y</div>
-              <div className="text-lg font-mono font-bold" style={{ color: '#00FFFF' }}>
-                {hasTracking && gestureState.palmPos ? `${Math.round(gestureState.palmPos.y * 100)}%` : '--'}
-              </div>
-              <div className="mt-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                <div className="h-full rounded-full transition-all" style={{ width: hasTracking && gestureState.palmPos ? `${gestureState.palmPos.y * 100}%` : '0%', background: '#00FFFF' }} />
-              </div>
-            </div>
-            {/* Spread */}
-            <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(0,255,0,0.1)' }}>
-              <div className="text-[10px] font-bold tracking-widest" style={{ color: '#ff1493' }}>SPREAD</div>
-              <div className="text-lg font-mono font-bold" style={{ color: gestureState.spread > 0.1 ? '#00ff00' : '#f97316' }}>
-                {hasTracking ? `${Math.round(gestureState.spread * 100)}%` : '--'}
-              </div>
-              <div className="mt-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(gestureState.spread * 200, 100)}%`, background: gestureState.spread > 0.1 ? '#00ff00' : '#f97316' }} />
-              </div>
+      {/* Compact Telemetry - Horizontal */}
+      <div className="w-full max-w-3xl rounded-xl overflow-hidden" style={{ background: '#0a0a0a', border: '1px solid rgba(255,20,147,0.15)' }}>
+        <div className="flex items-center gap-0.5 p-2">
+          <div className="flex-1 px-2 py-1.5 rounded-lg text-center" style={{ background: 'rgba(255,255,255,0.03)' }}>
+            <div className="text-[8px] font-bold tracking-widest" style={{ color: '#ff1493' }}>X</div>
+            <div className="text-sm font-mono font-bold" style={{ color: '#00FFFF' }}>
+              {hasTracking && gestureState.palmPos ? `${Math.round(gestureState.palmPos.x * 100)}%` : '--'}
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3 mt-3">
-            {/* Gesture */}
-            <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,20,147,0.1)' }}>
-              <div className="text-[10px] font-bold tracking-widest" style={{ color: '#ff1493' }}>GESTURE</div>
-              <div className="text-sm font-mono font-bold" style={{ color: hasTracking ? '#ff1493' : '#4b5563' }}>
-                {hasTracking ? gestureState.gesture.toUpperCase().replace('_', ' ') : '--'}
-              </div>
-            </div>
-            {/* Note */}
-            <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,20,147,0.1)' }}>
-              <div className="text-[10px] font-bold tracking-widest" style={{ color: '#ff1493' }}>NOTE</div>
-              <div className="text-sm font-mono font-bold" style={{ color: hasTracking ? accentColor : '#4b5563' }}>
-                {currentInstrument === 'drums' ? (lastDrumHit ? lastDrumHit.toUpperCase() : '--') : (hasTracking ? currentNote : '--')}
-              </div>
-            </div>
-            {/* Volume */}
-            <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,20,147,0.1)' }}>
-              <div className="text-[10px] font-bold tracking-widest" style={{ color: '#ff1493' }}>VOLUME</div>
-              <div className="text-sm font-mono font-bold" style={{ color: '#00FFFF' }}>
-                {hasTracking ? `${volumePercent}%` : '--'}
-              </div>
+          <div className="flex-1 px-2 py-1.5 rounded-lg text-center" style={{ background: 'rgba(255,255,255,0.03)' }}>
+            <div className="text-[8px] font-bold tracking-widest" style={{ color: '#ff1493' }}>Y</div>
+            <div className="text-sm font-mono font-bold" style={{ color: '#00FFFF' }}>
+              {hasTracking && gestureState.palmPos ? `${Math.round(gestureState.palmPos.y * 100)}%` : '--'}
             </div>
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex-1 px-2 py-1.5 rounded-lg text-center" style={{ background: 'rgba(255,255,255,0.03)' }}>
+            <div className="text-[8px] font-bold tracking-widest" style={{ color: '#ff1493' }}>SPREAD</div>
+            <div className="text-sm font-mono font-bold" style={{ color: gestureState.spread > 0.1 ? '#00ff00' : '#f97316' }}>
+              {hasTracking ? `${Math.round(gestureState.spread * 100)}%` : '--'}
+            </div>
+          </div>
+          <div className="flex-1 px-2 py-1.5 rounded-lg text-center" style={{ background: 'rgba(255,255,255,0.03)' }}>
+            <div className="text-[8px] font-bold tracking-widest" style={{ color: '#ff1493' }}>GESTURE</div>
+            <div className="text-xs font-mono font-bold flex items-center justify-center gap-1" style={{ color: hasTracking ? '#ff1493' : '#4b5563' }}>
+              {GESTURE_ICON_MAP[gestureState.gesture] || <FaCrosshairs />}
+              <span className="truncate">{hasTracking ? gestureState.gesture.toUpperCase().replace('_', ' ') : '--'}</span>
+            </div>
+          </div>
+          <div className="flex-1 px-2 py-1.5 rounded-lg text-center" style={{ background: 'rgba(255,255,255,0.03)' }}>
+            <div className="text-[8px] font-bold tracking-widest" style={{ color: '#ff1493' }}>CONF</div>
+            <div className="text-sm font-mono font-bold" style={{ color: gestureState.confidence > 0.5 ? '#00ff00' : '#f97316' }}>
+              {hasTracking ? `${Math.round(gestureState.confidence * 100)}%` : '--'}
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Status Bar */}
-      <div className="flex items-center gap-3 text-xs font-mono">
+      <div className="flex items-center gap-3 text-[10px] font-mono">
         <div className="flex items-center gap-1.5">
-          <FaCircle className="text-[6px]" style={{ color: cameraActive ? '#00ff00' : '#ff0000' }} />
+          <FaCircle className="text-[5px]" style={{ color: cameraActive ? '#00ff00' : '#ff0000' }} />
           <span style={{ color: cameraActive ? '#00ff00' : '#ff0000' }}>
-            {cameraActive ? 'Camera active' : 'Camera inactive'}
+            {cameraActive ? 'LIVE' : 'OFF'}
           </span>
         </div>
         {hasTracking && (
           <>
             <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
-            <span style={{ color: '#ff1493' }}>
-              Playing {INSTRUMENT_LABELS[currentInstrument]}
-            </span>
+            <span style={{ color: '#ff1493' }}>{INSTRUMENT_LABELS[currentInstrument]}</span>
           </>
         )}
         {isPlaying && (
@@ -1262,7 +1165,7 @@ export default function CameraSection({
         {isRecording && (
           <>
             <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
-            <span style={{ color: '#ff0000' }}>Recording</span>
+            <span style={{ color: '#ff0000' }}>REC</span>
           </>
         )}
       </div>
