@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { FaVideo, FaVideoSlash, FaMusic, FaGuitar, FaDrum, FaVolumeUp, FaHandPaper } from 'react-icons/fa'
+import { FaVideo, FaVideoSlash, FaMusic, FaGuitar, FaDrum, FaVolumeUp, FaVolumeMute, FaHandPaper, FaCrosshairs, FaCircle } from 'react-icons/fa'
 import type { InstrumentType, MotionData, MotionSnapshot } from './InstrumentSection'
 
 interface CameraSectionProps {
@@ -230,31 +230,66 @@ export default function CameraSection({
 
     oCtx.clearRect(0, 0, 640, 480)
 
-    // Draw pitch guide lines (horizontal divisions for notes)
-    oCtx.strokeStyle = 'rgba(255,255,255,0.08)'
-    oCtx.lineWidth = 1
-    oCtx.font = '10px monospace'
-    oCtx.fillStyle = 'rgba(255,255,255,0.25)'
+    // --- Scan lines (subtle green) ---
+    for (let i = 0; i < 480; i += 20) {
+      oCtx.strokeStyle = 'rgba(0, 255, 0, 0.03)'
+      oCtx.lineWidth = 1
+      oCtx.beginPath()
+      oCtx.moveTo(0, i)
+      oCtx.lineTo(640, i)
+      oCtx.stroke()
+    }
+
+    // --- Corner brackets (targeting reticle, green) ---
+    oCtx.strokeStyle = '#00ff00'
+    oCtx.lineWidth = 2
+    const margin = 15
+    oCtx.beginPath()
+    oCtx.moveTo(margin, margin + 30)
+    oCtx.lineTo(margin, margin)
+    oCtx.lineTo(margin + 30, margin)
+    oCtx.stroke()
+    oCtx.beginPath()
+    oCtx.moveTo(640 - margin - 30, margin)
+    oCtx.lineTo(640 - margin, margin)
+    oCtx.lineTo(640 - margin, margin + 30)
+    oCtx.stroke()
+    oCtx.beginPath()
+    oCtx.moveTo(margin, 480 - margin - 30)
+    oCtx.lineTo(margin, 480 - margin)
+    oCtx.lineTo(margin + 30, 480 - margin)
+    oCtx.stroke()
+    oCtx.beginPath()
+    oCtx.moveTo(640 - margin - 30, 480 - margin)
+    oCtx.lineTo(640 - margin, 480 - margin)
+    oCtx.lineTo(640 - margin, 480 - margin - 30)
+    oCtx.stroke()
+
+    // --- Pitch guide lines (cyan vertical guides with note labels) ---
+    oCtx.font = 'bold 10px monospace'
     for (let i = 0; i < NOTE_LABELS.length; i++) {
       const xPos = (i / (NOTE_LABELS.length - 1)) * 640
+      oCtx.strokeStyle = 'rgba(0, 255, 255, 0.08)'
+      oCtx.lineWidth = 1
       oCtx.beginPath()
       oCtx.moveTo(xPos, 0)
       oCtx.lineTo(xPos, 480)
       oCtx.stroke()
+      oCtx.fillStyle = 'rgba(0, 255, 255, 0.4)'
       oCtx.fillText(NOTE_LABELS[i], xPos + 3, 14)
     }
 
-    // Draw volume guide labels
-    oCtx.fillStyle = 'rgba(255,255,255,0.2)'
-    oCtx.font = '10px monospace'
+    // --- Volume guide labels ---
+    oCtx.fillStyle = 'rgba(0, 255, 255, 0.25)'
+    oCtx.font = 'bold 10px monospace'
     oCtx.fillText('LOUD', 4, 28)
     oCtx.fillText('QUIET', 4, 474)
 
-    // Draw percussion zone
+    // --- Percussion zone ---
     oCtx.fillStyle = 'rgba(249,115,22,0.08)'
     oCtx.fillRect(0, 400, 640, 80)
-    oCtx.fillStyle = 'rgba(249,115,22,0.3)'
-    oCtx.font = '10px monospace'
+    oCtx.fillStyle = 'rgba(249,115,22,0.35)'
+    oCtx.font = 'bold 10px monospace'
     oCtx.fillText('PERCUSSION ZONE', 260, 445)
 
     if (finger) {
@@ -264,7 +299,9 @@ export default function CameraSection({
       setCurrentFreq(freq)
       setCurrentGain(gain)
 
-      // Update shared motion data so recorder captures camera input too
+      const noteName = freqToNote(freq)
+
+      // Update shared motion data
       const betaEquivalent = (finger.x * 180) - 90
       const gammaEquivalent = (gain * 180) - 90
       setMotionData(prev => ({
@@ -302,49 +339,97 @@ export default function CameraSection({
         })
       }
 
-      // Draw finger indicator - glowing circle
+      // --- Enhanced neon overlay drawing ---
       const px = finger.x * 640
       const py = finger.y * 480
-      const gradient = oCtx.createRadialGradient(px, py, 0, px, py, 30)
-      gradient.addColorStop(0, accentColor + 'cc')
-      gradient.addColorStop(0.5, accentColor + '44')
+
+      // Hand skeleton: green lines from palm center to fingertips
+      const palmX = px
+      const palmY = py + 60
+      const fingerEndpoints = [
+        { x: px - 40, y: py - 50 },
+        { x: px - 15, y: py - 60 },
+        { x: px, y: py - 65 },
+        { x: px + 15, y: py - 55 },
+        { x: px + 30, y: py - 45 },
+      ]
+
+      // Green skeletal lines
+      oCtx.strokeStyle = '#00ff00'
+      oCtx.lineWidth = 2
+      fingerEndpoints.forEach(ep => {
+        oCtx.beginPath()
+        oCtx.moveTo(palmX, palmY)
+        oCtx.lineTo(ep.x, ep.y)
+        oCtx.stroke()
+      })
+
+      // Connect fingertips with a faint green line
+      oCtx.strokeStyle = 'rgba(0, 255, 0, 0.4)'
+      oCtx.lineWidth = 1
+      oCtx.beginPath()
+      oCtx.moveTo(fingerEndpoints[0].x, fingerEndpoints[0].y)
+      for (let fe = 1; fe < fingerEndpoints.length; fe++) {
+        oCtx.lineTo(fingerEndpoints[fe].x, fingerEndpoints[fe].y)
+      }
+      oCtx.stroke()
+
+      // Red joint dots at fingertips, midpoints, and palm
+      oCtx.fillStyle = '#ff0000'
+      fingerEndpoints.forEach(ep => {
+        oCtx.beginPath()
+        oCtx.arc(ep.x, ep.y, 4, 0, Math.PI * 2)
+        oCtx.fill()
+        const midX = (palmX + ep.x) / 2
+        const midY = (palmY + ep.y) / 2
+        oCtx.beginPath()
+        oCtx.arc(midX, midY, 3, 0, Math.PI * 2)
+        oCtx.fill()
+      })
+
+      // Palm center dot (larger, red)
+      oCtx.beginPath()
+      oCtx.arc(palmX, palmY, 6, 0, Math.PI * 2)
+      oCtx.fill()
+
+      // Glowing cyan circle around primary tracking point
+      const gradient = oCtx.createRadialGradient(px, py, 0, px, py, 25)
+      gradient.addColorStop(0, 'rgba(0, 255, 255, 0.8)')
+      gradient.addColorStop(0.5, 'rgba(0, 255, 255, 0.2)')
       gradient.addColorStop(1, 'transparent')
       oCtx.fillStyle = gradient
       oCtx.beginPath()
-      oCtx.arc(px, py, 30, 0, Math.PI * 2)
+      oCtx.arc(px, py, 25, 0, Math.PI * 2)
       oCtx.fill()
 
-      // Inner crosshair
-      oCtx.strokeStyle = accentColor
-      oCtx.lineWidth = 2
+      // Crosshair at finger position (cyan)
+      oCtx.strokeStyle = '#00ffff'
+      oCtx.lineWidth = 1.5
       oCtx.beginPath()
-      oCtx.arc(px, py, 12, 0, Math.PI * 2)
-      oCtx.stroke()
-      oCtx.beginPath()
-      oCtx.moveTo(px - 18, py)
-      oCtx.lineTo(px - 8, py)
-      oCtx.moveTo(px + 8, py)
-      oCtx.lineTo(px + 18, py)
-      oCtx.moveTo(px, py - 18)
-      oCtx.lineTo(px, py - 8)
-      oCtx.moveTo(px, py + 8)
-      oCtx.lineTo(px, py + 18)
+      oCtx.moveTo(px - 30, py)
+      oCtx.lineTo(px - 10, py)
+      oCtx.moveTo(px + 10, py)
+      oCtx.lineTo(px + 30, py)
+      oCtx.moveTo(px, py - 30)
+      oCtx.lineTo(px, py - 10)
+      oCtx.moveTo(px, py + 10)
+      oCtx.lineTo(px, py + 30)
       oCtx.stroke()
 
-      // Coordinate label
-      oCtx.fillStyle = 'white'
-      oCtx.font = 'bold 11px monospace'
-      oCtx.fillText(`${freqToNote(freq)} ${Math.round(freq)}Hz`, px + 20, py - 8)
-      oCtx.fillStyle = 'rgba(255,255,255,0.6)'
-      oCtx.font = '10px monospace'
-      oCtx.fillText(`Vol: ${Math.round(gain * 100)}%`, px + 20, py + 6)
+      // Info text near finger
+      oCtx.fillStyle = '#00ffff'
+      oCtx.font = 'bold 12px monospace'
+      oCtx.fillText(`${noteName} | ${Math.round(freq)}Hz`, px + 35, py - 5)
+      oCtx.fillStyle = '#ff1493'
+      oCtx.font = '11px monospace'
+      oCtx.fillText(`VOL: ${Math.round(gain * 100)}%`, px + 35, py + 12)
     } else {
       setFingerPos(null)
       prevYRef.current = null
     }
 
     animFrameRef.current = requestAnimationFrame(processFrame)
-  }, [accentColor, audioContextRef, oscillatorRef, gainNodeRef, triggerPercussion, isRecording, recordingRef, currentInstrument, setMotionData])
+  }, [audioContextRef, oscillatorRef, gainNodeRef, triggerPercussion, isRecording, recordingRef, currentInstrument, setMotionData])
 
   const startCamera = useCallback(async () => {
     setCameraError(null)
@@ -388,92 +473,169 @@ export default function CameraSection({
   }, [])
 
   const currentNote = freqToNote(currentFreq)
+  const volumePercent = Math.round(currentGain * 100)
 
   return (
-    <div className="flex flex-col items-center gap-4 px-4 pb-24 pt-4">
-      {/* Instrument Selector */}
-      <div className="flex gap-2 w-full max-w-md">
-        {(['synth', 'piano', 'strings', 'drums'] as InstrumentType[]).map((inst) => (
-          <button
-            key={inst}
-            onClick={() => {
-              setCurrentInstrument(inst)
-              if (isPlaying) stopSound()
-            }}
-            className="flex-1 flex flex-col items-center gap-1 py-3 px-2 rounded-xl transition-all duration-200"
-            style={{
-              background: currentInstrument === inst ? `${INSTRUMENT_COLORS[inst]}22` : 'rgba(255,255,255,0.05)',
-              border: `1px solid ${currentInstrument === inst ? INSTRUMENT_COLORS[inst] : 'rgba(255,255,255,0.1)'}`,
-              color: currentInstrument === inst ? INSTRUMENT_COLORS[inst] : '#9ca3af',
-            }}
-          >
-            <span className="text-lg">{INSTRUMENT_ICONS[inst]}</span>
-            <span className="text-xs font-medium">{INSTRUMENT_LABELS[inst]}</span>
-          </button>
-        ))}
+    <div className="flex flex-col items-center gap-5 px-4 pb-24 pt-4" style={{ background: '#000000' }}>
+      {/* Header Area */}
+      <div className="flex flex-col items-center gap-2 w-full max-w-2xl">
+        <Badge className="text-xs font-bold tracking-widest border-0 px-4 py-1" style={{ background: '#ff1493', color: '#ffffff' }}>
+          GESTURE INSTRUMENT
+        </Badge>
+        <div className="text-center mt-1">
+          <h1 className="text-4xl font-black tracking-tight text-white leading-none">GESTURE</h1>
+          <h1 className="text-4xl font-black tracking-tight text-white leading-none">VOLUME</h1>
+          <span className="text-lg font-bold tracking-wide" style={{ color: '#FFD700' }}>{'& PITCH'}</span>
+        </div>
+        <p className="text-sm font-medium tracking-wide" style={{ color: '#00FFFF' }}>Control music with your fingers</p>
+        <Badge className="text-[10px] border-0 font-mono px-2 py-0.5 mt-1" style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)' }}>
+          OpenCV + Web Audio
+        </Badge>
       </div>
 
-      {/* Camera View */}
-      <div className="relative w-full max-w-md overflow-hidden rounded-2xl" style={{ border: `1px solid ${accentColor}33`, background: 'rgba(0,0,0,0.5)' }}>
-        <div className="relative" style={{ aspectRatio: '4/3' }}>
-          <video
-            ref={videoRef}
-            playsInline
-            muted
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{ display: cameraActive ? 'block' : 'none', transform: 'scaleX(-1)' }}
-          />
-          <canvas ref={canvasRef} className="hidden" width={640} height={480} />
-          <canvas
-            ref={overlayRef}
-            className="absolute inset-0 w-full h-full"
-            width={640}
-            height={480}
-            style={{ display: cameraActive ? 'block' : 'none', transform: 'scaleX(-1)' }}
-          />
+      {/* Instrument Selector (neon glow on selected) */}
+      <div className="flex gap-2 w-full max-w-2xl">
+        {(['synth', 'piano', 'strings', 'drums'] as InstrumentType[]).map((inst) => {
+          const isSelected = currentInstrument === inst
+          return (
+            <button
+              key={inst}
+              onClick={() => {
+                setCurrentInstrument(inst)
+                if (isPlaying) stopSound()
+              }}
+              className="flex-1 flex flex-col items-center gap-1 py-3 px-2 rounded-xl transition-all duration-200"
+              style={{
+                background: isSelected ? `${INSTRUMENT_COLORS[inst]}18` : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${isSelected ? INSTRUMENT_COLORS[inst] : 'rgba(255,255,255,0.08)'}`,
+                color: isSelected ? INSTRUMENT_COLORS[inst] : '#6b7280',
+                boxShadow: isSelected ? `0 0 15px ${INSTRUMENT_COLORS[inst]}40, inset 0 0 15px ${INSTRUMENT_COLORS[inst]}10` : 'none',
+              }}
+            >
+              <span className="text-lg">{INSTRUMENT_ICONS[inst]}</span>
+              <span className="text-xs font-semibold tracking-wide">{INSTRUMENT_LABELS[inst]}</span>
+            </button>
+          )
+        })}
+      </div>
 
-          {/* Camera Off State */}
-          {!cameraActive && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-              <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                <FaVideo className="text-2xl text-gray-500" />
+      {/* Main Layout: Volume Bar (left) + Camera (right) */}
+      <div className="flex gap-4 w-full max-w-2xl items-stretch">
+        {/* Left: Volume Indicator + Note Display */}
+        <div className="flex flex-col items-center gap-3 w-20 shrink-0">
+          {/* Speaker icon (top = loud) */}
+          <FaVolumeUp className="text-lg" style={{ color: fingerPos && currentGain > 0.05 ? '#ef4444' : '#4b5563' }} />
+
+          {/* Vertical volume bar */}
+          <div className="relative flex-1 w-6 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', minHeight: 200 }}>
+            <div
+              className="absolute bottom-0 left-0 right-0 rounded-full transition-all duration-150"
+              style={{
+                height: fingerPos ? `${volumePercent}%` : '0%',
+                background: 'linear-gradient(to top, #ef4444, #f97316, #eab308)',
+              }}
+            />
+            {/* Level tick marks */}
+            {[25, 50, 75].map(tick => (
+              <div
+                key={tick}
+                className="absolute left-0 right-0 h-px"
+                style={{ bottom: `${tick}%`, background: 'rgba(255,255,255,0.15)' }}
+              />
+            ))}
+          </div>
+
+          {/* Muted icon (bottom = quiet) */}
+          <FaVolumeMute className="text-lg" style={{ color: !fingerPos || currentGain < 0.05 ? '#ef4444' : '#4b5563' }} />
+
+          {/* Volume percentage */}
+          <div className="text-center">
+            <div className="text-lg font-bold font-mono text-white">{fingerPos ? `${volumePercent}%` : '--'}</div>
+            <div className="text-[10px] font-semibold tracking-widest" style={{ color: '#ff1493' }}>VOL</div>
+          </div>
+
+          {/* Current note info */}
+          <div className="text-center mt-1">
+            <div className="text-2xl font-black font-mono" style={{ color: fingerPos ? accentColor : '#4b5563' }}>
+              {fingerPos ? currentNote : '--'}
+            </div>
+            <div className="text-[10px] font-mono" style={{ color: '#00FFFF' }}>
+              {fingerPos ? `${Math.round(currentFreq)} Hz` : '-- Hz'}
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Camera Feed */}
+        <div className="relative flex-1 overflow-hidden rounded-xl" style={{ border: '1px solid rgba(0,255,0,0.2)', background: '#0a0a0a' }}>
+          <div className="relative" style={{ aspectRatio: '4/3' }}>
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ display: cameraActive ? 'block' : 'none', transform: 'scaleX(-1)' }}
+            />
+            <canvas ref={canvasRef} className="hidden" width={640} height={480} />
+            <canvas
+              ref={overlayRef}
+              className="absolute inset-0 w-full h-full"
+              width={640}
+              height={480}
+              style={{ display: cameraActive ? 'block' : 'none', transform: 'scaleX(-1)' }}
+            />
+
+            {/* Camera Off State */}
+            {!cameraActive && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3" style={{ background: '#0a0a0a' }}>
+                <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: 'rgba(0,255,0,0.05)', border: '1px solid rgba(0,255,0,0.15)' }}>
+                  <FaVideo className="text-2xl" style={{ color: '#00ff00' }} />
+                </div>
+                <p className="text-sm text-center max-w-[220px]" style={{ color: '#00FFFF' }}>
+                  Enable camera to track finger position and control music
+                </p>
+                <div className="flex items-center gap-1 text-[10px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  <FaCrosshairs className="text-[8px]" />
+                  <span>Skin-tone detection via OpenCV algorithms</span>
+                </div>
               </div>
-              <p className="text-sm text-gray-500 text-center max-w-[200px]">Enable camera to track finger position and play music</p>
-            </div>
-          )}
+            )}
 
-          {/* Finger detected indicator */}
-          {cameraActive && (
-            <div className="absolute top-3 right-3 z-10">
-              <Badge
-                className="text-xs border-0 font-medium"
-                style={{
-                  background: fingerPos ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)',
-                  color: fingerPos ? '#22c55e' : '#ef4444',
-                }}
-              >
-                <FaHandPaper className="mr-1" />
-                {fingerPos ? 'Tracking' : 'No finger'}
-              </Badge>
-            </div>
-          )}
+            {/* Tracking status badge */}
+            {cameraActive && (
+              <div className="absolute top-3 right-3 z-10">
+                <Badge
+                  className="text-[10px] border-0 font-bold tracking-wider"
+                  style={{
+                    background: fingerPos ? 'rgba(0,255,0,0.15)' : 'rgba(255,0,0,0.15)',
+                    color: fingerPos ? '#00ff00' : '#ff0000',
+                    border: `1px solid ${fingerPos ? 'rgba(0,255,0,0.3)' : 'rgba(255,0,0,0.3)'}`,
+                  }}
+                >
+                  <FaHandPaper className="mr-1" />
+                  {fingerPos ? 'TRACKING' : 'NO SIGNAL'}
+                </Badge>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Camera Error */}
       {cameraError && (
-        <div className="w-full max-w-md text-center px-4 py-3 rounded-xl" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
-          <p className="text-sm text-red-400">{cameraError}</p>
+        <div className="w-full max-w-2xl text-center px-4 py-3 rounded-xl" style={{ background: 'rgba(255,0,0,0.08)', border: '1px solid rgba(255,0,0,0.2)' }}>
+          <p className="text-sm" style={{ color: '#ff4444' }}>{cameraError}</p>
         </div>
       )}
 
-      {/* Camera Controls */}
-      <div className="flex gap-3 w-full max-w-md">
+      {/* Controls */}
+      <div className="flex gap-3 w-full max-w-2xl">
         <Button
           onClick={cameraActive ? stopCamera : startCamera}
-          className="flex-1 py-5 text-base font-semibold rounded-xl flex items-center justify-center gap-2"
+          className="flex-1 py-5 text-base font-bold rounded-xl flex items-center justify-center gap-2 border-0 transition-all duration-300"
           style={{
-            background: cameraActive ? 'rgba(239,68,68,0.8)' : accentColor,
+            background: cameraActive ? 'rgba(255,0,0,0.7)' : 'linear-gradient(135deg, #ff1493, #00FFFF)',
+            color: '#ffffff',
+            boxShadow: cameraActive ? '0 0 20px rgba(255,0,0,0.3)' : '0 0 20px rgba(255,20,147,0.3)',
           }}
         >
           {cameraActive ? <FaVideoSlash /> : <FaVideo />}
@@ -486,90 +648,108 @@ export default function CameraSection({
               if (isPlaying) stopSound()
               else startSound()
             }}
-            className="py-5 px-6 text-base font-semibold rounded-xl"
+            className="py-5 px-6 text-base font-bold rounded-xl border-0 transition-all duration-300"
             style={{
-              background: isPlaying ? 'rgba(239,68,68,0.8)' : 'rgba(255,255,255,0.1)',
-              border: `1px solid ${isPlaying ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.15)'}`,
+              background: isPlaying ? 'rgba(0,255,0,0.15)' : 'rgba(255,0,0,0.15)',
+              color: isPlaying ? '#00ff00' : '#ff4444',
+              border: `1px solid ${isPlaying ? 'rgba(0,255,0,0.3)' : 'rgba(255,0,0,0.3)'}`,
+              boxShadow: isPlaying ? '0 0 15px rgba(0,255,0,0.15)' : 'none',
             }}
           >
-            {isPlaying ? 'Mute' : 'Sound On'}
+            {isPlaying ? <><FaVolumeUp className="mr-2" /> Sound ON</> : <><FaVolumeMute className="mr-2" /> Sound OFF</>}
           </Button>
         )}
       </div>
 
-      {/* Note Display */}
-      {cameraActive && fingerPos && (
-        <div className="flex items-center gap-4 w-full max-w-md justify-center">
-          <div className="text-center">
-            <div className="text-4xl font-bold" style={{ color: accentColor }}>{currentNote}</div>
-            <div className="text-xs text-gray-500 mt-1">{Math.round(currentFreq)} Hz</div>
-          </div>
-          <div className="w-px h-12" style={{ background: 'rgba(255,255,255,0.1)' }} />
-          <div className="text-center">
-            <div className="text-2xl font-bold text-white">{Math.round(currentGain * 100)}%</div>
-            <div className="text-xs text-gray-500 mt-1">Volume</div>
-          </div>
-        </div>
-      )}
-
-      {/* Telemetry */}
-      <Card className="w-full max-w-md border-0" style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(12px)' }}>
+      {/* Telemetry Panel */}
+      <Card className="w-full max-w-2xl border-0 rounded-xl overflow-hidden" style={{ background: '#0a0a0a', border: '1px solid rgba(255,20,147,0.2)' }}>
         <CardContent className="p-4">
-          <div className="text-xs text-gray-500 uppercase tracking-wider mb-3 font-semibold">Camera Tracking Data</div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-xs font-bold tracking-[0.2em] uppercase" style={{ color: '#ff1493' }}>
+              Telemetry Data
+            </div>
+            <Badge className="text-[9px] border-0 font-mono" style={{ background: 'rgba(0,255,255,0.1)', color: '#00FFFF' }}>
+              LIVE
+            </Badge>
+          </div>
           <div className="grid grid-cols-3 gap-3">
-            <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
-              <div className="text-xs text-gray-500">Finger X</div>
-              <div className="text-lg font-mono text-white">{fingerPos ? (fingerPos.x * 100).toFixed(0) + '%' : '--'}</div>
-              <div className="mt-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
-                <div className="h-full rounded-full transition-all" style={{ width: fingerPos ? `${fingerPos.x * 100}%` : '0%', background: accentColor }} />
+            {/* Finger X */}
+            <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(0,255,255,0.1)' }}>
+              <div className="text-[10px] font-bold tracking-widest" style={{ color: '#ff1493' }}>FINGER X</div>
+              <div className="text-lg font-mono font-bold" style={{ color: '#00FFFF' }}>
+                {fingerPos ? (fingerPos.x * 100).toFixed(0) + '%' : '--'}
+              </div>
+              <div className="mt-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                <div className="h-full rounded-full transition-all" style={{ width: fingerPos ? `${fingerPos.x * 100}%` : '0%', background: '#00FFFF' }} />
               </div>
             </div>
-            <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
-              <div className="text-xs text-gray-500">Finger Y</div>
-              <div className="text-lg font-mono text-white">{fingerPos ? (fingerPos.y * 100).toFixed(0) + '%' : '--'}</div>
-              <div className="mt-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
-                <div className="h-full rounded-full transition-all" style={{ width: fingerPos ? `${fingerPos.y * 100}%` : '0%', background: accentColor }} />
+            {/* Finger Y */}
+            <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(0,255,255,0.1)' }}>
+              <div className="text-[10px] font-bold tracking-widest" style={{ color: '#ff1493' }}>FINGER Y</div>
+              <div className="text-lg font-mono font-bold" style={{ color: '#00FFFF' }}>
+                {fingerPos ? (fingerPos.y * 100).toFixed(0) + '%' : '--'}
+              </div>
+              <div className="mt-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                <div className="h-full rounded-full transition-all" style={{ width: fingerPos ? `${fingerPos.y * 100}%` : '0%', background: '#00FFFF' }} />
               </div>
             </div>
-            <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
-              <div className="text-xs text-gray-500">Confidence</div>
-              <div className="text-lg font-mono text-white">{fingerPos ? (fingerPos.confidence * 100).toFixed(0) + '%' : '--'}</div>
-              <div className="mt-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
-                <div className="h-full rounded-full transition-all" style={{ width: fingerPos ? `${fingerPos.confidence * 100}%` : '0%', background: fingerPos && fingerPos.confidence > 0.5 ? '#22c55e' : '#f97316' }} />
+            {/* Confidence */}
+            <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(0,255,0,0.1)' }}>
+              <div className="text-[10px] font-bold tracking-widest" style={{ color: '#ff1493' }}>CONFIDENCE</div>
+              <div className="text-lg font-mono font-bold" style={{ color: fingerPos && fingerPos.confidence > 0.5 ? '#00ff00' : '#f97316' }}>
+                {fingerPos ? (fingerPos.confidence * 100).toFixed(0) + '%' : '--'}
+              </div>
+              <div className="mt-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                <div className="h-full rounded-full transition-all" style={{ width: fingerPos ? `${fingerPos.confidence * 100}%` : '0%', background: fingerPos && fingerPos.confidence > 0.5 ? '#00ff00' : '#f97316' }} />
               </div>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-3 mt-3">
-            <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
-              <div className="text-xs text-gray-500">Frequency</div>
-              <div className="text-sm font-mono text-white">{fingerPos ? Math.round(currentFreq) + ' Hz' : '--'}</div>
+            {/* Note */}
+            <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,20,147,0.1)' }}>
+              <div className="text-[10px] font-bold tracking-widest" style={{ color: '#ff1493' }}>NOTE</div>
+              <div className="text-sm font-mono font-bold" style={{ color: fingerPos ? accentColor : '#4b5563' }}>
+                {fingerPos ? currentNote : '--'}
+              </div>
             </div>
-            <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
-              <div className="text-xs text-gray-500">Note</div>
-              <div className="text-sm font-mono" style={{ color: fingerPos ? accentColor : '#6b7280' }}>{fingerPos ? currentNote : '--'}</div>
+            {/* Frequency */}
+            <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,20,147,0.1)' }}>
+              <div className="text-[10px] font-bold tracking-widest" style={{ color: '#ff1493' }}>FREQUENCY</div>
+              <div className="text-sm font-mono font-bold" style={{ color: '#00FFFF' }}>
+                {fingerPos ? Math.round(currentFreq) + ' Hz' : '--'}
+              </div>
             </div>
-            <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
-              <div className="text-xs text-gray-500">Volume</div>
-              <div className="text-sm font-mono text-white">{fingerPos ? Math.round(currentGain * 100) + '%' : '--'}</div>
+            {/* Volume */}
+            <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,20,147,0.1)' }}>
+              <div className="text-[10px] font-bold tracking-widest" style={{ color: '#ff1493' }}>VOLUME</div>
+              <div className="text-sm font-mono font-bold" style={{ color: '#00FFFF' }}>
+                {fingerPos ? volumePercent + '%' : '--'}
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Status */}
-      <div className="flex items-center gap-2 text-xs text-gray-500">
-        <div className="w-2 h-2 rounded-full" style={{ background: cameraActive ? '#22c55e' : '#ef4444' }} />
-        {cameraActive ? 'Camera active' : 'Camera inactive'}
+      {/* Status Bar */}
+      <div className="flex items-center gap-3 text-xs font-mono">
+        <div className="flex items-center gap-1.5">
+          <FaCircle className="text-[6px]" style={{ color: cameraActive ? '#00ff00' : '#ff0000' }} />
+          <span style={{ color: cameraActive ? '#00ff00' : '#ff0000' }}>
+            {cameraActive ? 'Camera active' : 'Camera inactive'}
+          </span>
+        </div>
         {fingerPos && (
           <>
-            <div className="w-1 h-1 rounded-full bg-gray-600" />
-            <span style={{ color: accentColor }}>Playing {INSTRUMENT_LABELS[currentInstrument]}</span>
+            <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
+            <span style={{ color: '#ff1493' }}>
+              Playing {INSTRUMENT_LABELS[currentInstrument]}
+            </span>
           </>
         )}
         {isPlaying && (
           <>
-            <div className="w-1 h-1 rounded-full bg-gray-600" />
-            <span className="text-green-400">Sound ON</span>
+            <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
+            <span style={{ color: '#00ff00' }}>Sound ON</span>
           </>
         )}
       </div>
