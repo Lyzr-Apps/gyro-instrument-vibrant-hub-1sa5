@@ -1,0 +1,28 @@
+{
+  "agents": [
+    {
+      "agent_id": "69a51ec08f619685109a6ccb",
+      "name": "Instrument Guide Agent",
+      "node_id": "instrument_guide_agent",
+      "provider": "openai",
+      "model": "gpt-4.1",
+      "temperature": 0.5,
+      "top_p": 0.95,
+      "image_output_config": null,
+      "voice_config": null,
+      "file_output": false
+    },
+    {
+      "agent_id": "69a51ec0f92cf455a85ecc35",
+      "name": "Session Analyzer Agent",
+      "node_id": "session_analyzer_agent",
+      "provider": "openai",
+      "model": "gpt-4.1",
+      "temperature": 0.5,
+      "top_p": 0.95,
+      "image_output_config": null,
+      "voice_config": null,
+      "file_output": false
+    }
+  ]
+}

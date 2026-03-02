@@ -1,0 +1,36 @@
+{
+  "agent_name": "Session Analyzer Agent",
+  "agent_id": "69a51ec0f92cf455a85ecc35",
+  "description": "Receives a text summary of a recorded session (motion ranges, duration, instruments used, gesture counts) and provides musical feedback including rhythm analysis, expressiveness rating, pitch range used, and suggestions for improvement.",
+  "agent_type": "json",
+  "accessor": "result",
+  "auto_generated": true,
+  "response_schema": {
+    "overall_score": "number",
+    "summary": "string",
+    "rhythm_analysis": "string",
+    "expressiveness_rating": "string",
+    "pitch_analysis": "string",
+    "technique_notes": "string",
+    "suggestions": [
+      "string"
+    ],
+    "session_highlights": [
+      "string"
+    ]
+  },
+  "example_response": {
+    "overall_score": 0,
+    "summary": "Brief performance overview",
+    "rhythm_analysis": "Analysis of timing and rhythm",
+    "expressiveness_rating": "Assessment of dynamic range usage",
+    "pitch_analysis": "Analysis of pitch range and melodic movement",
+    "technique_notes": "Assessment of gesture control quality",
+    "suggestions": [
+      "sample string"
+    ],
+    "session_highlights": [
+      "sample string"
+    ]
+  }
+}

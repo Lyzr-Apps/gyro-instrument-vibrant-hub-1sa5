@@ -1,0 +1,47 @@
+{
+  "agent_name": "Session Analyzer Agent",
+  "agent_id": "69a51ec0f92cf455a85ecc35",
+  "agent_type": "json",
+  "accessor": "json",
+  "has_module_outputs": false,
+  "schema": {
+    "overall_score": {
+      "type": "number",
+      "description": "Performance score from 1-10"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Brief performance overview"
+    },
+    "rhythm_analysis": {
+      "type": "string",
+      "description": "Analysis of timing and rhythm"
+    },
+    "expressiveness_rating": {
+      "type": "string",
+      "description": "Assessment of dynamic range usage"
+    },
+    "pitch_analysis": {
+      "type": "string",
+      "description": "Analysis of pitch range and melodic movement"
+    },
+    "technique_notes": {
+      "type": "string",
+      "description": "Assessment of gesture control quality"
+    },
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "2-4 specific improvement tips"
+    },
+    "session_highlights": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Positive observations from the session"
+    }
+  }
+}

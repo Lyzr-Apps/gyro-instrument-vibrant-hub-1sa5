@@ -1,0 +1,46 @@
+{
+  "nodes": [
+    {
+      "id": "input_node",
+      "type": "Input",
+      "label": "User Query",
+      "nodeCategory": "input"
+    },
+    {
+      "id": "instrument_guide_agent",
+      "type": "Agent",
+      "label": "Instrument Guide Agent",
+      "nodeCategory": "agent"
+    },
+    {
+      "id": "session_analyzer_agent",
+      "type": "Agent",
+      "label": "Session Analyzer Agent",
+      "nodeCategory": "agent"
+    },
+    {
+      "id": "output_node",
+      "type": "Output",
+      "label": "Response",
+      "nodeCategory": "end"
+    }
+  ],
+  "edges": [
+    {
+      "source": "input_node",
+      "target": "instrument_guide_agent"
+    },
+    {
+      "source": "input_node",
+      "target": "session_analyzer_agent"
+    },
+    {
+      "source": "instrument_guide_agent",
+      "target": "output_node"
+    },
+    {
+      "source": "session_analyzer_agent",
+      "target": "output_node"
+    }
+  ]
+}

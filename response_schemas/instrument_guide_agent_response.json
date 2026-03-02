@@ -1,0 +1,22 @@
+{
+  "agent_name": "Instrument Guide Agent",
+  "agent_id": "69a51ec08f619685109a6ccb",
+  "description": "Answers user questions about motion-to-sound mappings, instrument controls, supported gestures, browser compatibility, and troubleshooting gyroscope issues. Provides contextual help for the instrument interface.",
+  "agent_type": "json",
+  "accessor": "result",
+  "auto_generated": true,
+  "response_schema": {
+    "answer": "string",
+    "tips": [
+      "string"
+    ],
+    "category": "string"
+  },
+  "example_response": {
+    "answer": "The main response text answering the user's question",
+    "tips": [
+      "sample string"
+    ],
+    "category": "Category of the question"
+  }
+}
