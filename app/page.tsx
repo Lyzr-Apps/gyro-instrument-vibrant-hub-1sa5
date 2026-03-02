@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useCallback } from 'react'
-import { FaMusic, FaRecordVinyl, FaChartBar } from 'react-icons/fa'
+import { FaMusic, FaRecordVinyl, FaChartBar, FaVideo } from 'react-icons/fa'
 import { callAIAgent, extractText } from '@/lib/aiAgent'
 import InstrumentSection from './sections/InstrumentSection'
 import type { MotionData, InstrumentType, MotionSnapshot } from './sections/InstrumentSection'
@@ -9,6 +9,7 @@ import GuideSection from './sections/GuideSection'
 import RecorderSection from './sections/RecorderSection'
 import type { RecordedSession } from './sections/RecorderSection'
 import AnalyzerSection from './sections/AnalyzerSection'
+import CameraSection from './sections/CameraSection'
 
 const SESSION_ANALYZER_ID = '69a51ec0f92cf455a85ecc35'
 
@@ -55,10 +56,11 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-type TabId = 'instrument' | 'recordings' | 'analysis'
+type TabId = 'instrument' | 'camera' | 'recordings' | 'analysis'
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'instrument', label: 'Instrument', icon: <FaMusic /> },
+  { id: 'camera', label: 'Camera', icon: <FaVideo /> },
   { id: 'recordings', label: 'Recordings', icon: <FaRecordVinyl /> },
   { id: 'analysis', label: 'Analysis', icon: <FaChartBar /> },
 ]
@@ -197,6 +199,21 @@ export default function Page() {
               audioContextRef={audioContextRef}
               oscillatorRef={oscillatorRef}
               gainNodeRef={gainNodeRef}
+            />
+          )}
+          {activeTab === 'camera' && (
+            <CameraSection
+              currentInstrument={currentInstrument}
+              setCurrentInstrument={setCurrentInstrument}
+              isPlaying={isPlaying}
+              setIsPlaying={setIsPlaying}
+              isRecording={isRecording}
+              recordingRef={recordingRef}
+              audioContextRef={audioContextRef}
+              oscillatorRef={oscillatorRef}
+              gainNodeRef={gainNodeRef}
+              motionData={motionData}
+              setMotionData={setMotionData}
             />
           )}
           {activeTab === 'recordings' && (
